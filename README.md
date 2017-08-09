@@ -4,3 +4,4 @@ Cross-validation
 Validation Set Approach
 LOOCV
 k-fold cross validation
+Bootstrapping
