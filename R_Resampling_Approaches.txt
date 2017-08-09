@@ -1,0 +1,78 @@
+#Resampling Approaches
+
+#Validation Set Approach
+set.seed(1)
+attach(Auto)
+train <- sample(392, 196)               # Selects 196 random obs out of 392 
+linear_reg <- lm(mpg~horsepower, data=Auto, subset=train)     #Running linear reg
+predict_reg <- predict(linear_reg,Auto)                       #Predictions for entire data 
+predict_reg
+predict_final <- (mpg - predict_reg)[-train]                  #Difference calculation for test data
+predict_final1 <- mean(predict_final^2)                       #Final MSE
+predict_final1
+mean((mpg-predict(linear_reg,Auto))[-train]^2)                #Can be achieved in single command
+
+lm.fit2=lm(mpg~poly(horsepower,2), data=Auto, subset=train)   #Polynomial Reg1
+mean((mpg-predict(lm.fit2,Auto))[-train]^2)
+
+lm.fit3=lm(mpg~poly(horsepower,3), data=Auto, subset=train)   #Polynomial Reg2
+mean((mpg-predict(lm.fit3,Auto))[-train]^2)
+
+#LOOCV
+#lm() and glm() without the 'family=' argument gives identical results
+#performing linear reg using glm() as it can be used with cv.glm()
+library(boot)
+glm.fit <- glm(mpg~horsepower, data=Auto)        #Linear reg using glm()
+cv.err <- cv.glm(Auto, glm.fit)                  #LOOCV
+cv.err$delta                                     #Gives MSE estimate   
+
+cv.error=rep(0,5)                                #Checking model for increasingly complex
+for (i in 1:5){                                  #polynomial fits using for() function
+  glm.fit=glm(mpg~poly(horsepower,i),data=Auto)
+  cv.error[i]=cv.glm (Auto,glm.fit)$delta[1]
+  }
+cv.error
+
+#Estimating LOOCV error using for loop
+count = rep(0, dim(Weekly)[1])
+for (i in 1:(dim(Weekly)[1])) {
+  log_reg <- glm(Direction~Lag1+Lag2, data=Weekly[-i,], family=binomial)
+  is_up <- predict(log_reg, Weekly[i,], type="response") > 0.5
+  is_true_up <- Weekly[i,]$Direction == "Up"
+  if (is_up != is_true_up) count[i] = 1
+}
+sum(count) 
+mean(count)
+
+#k-fold cross validation
+set.seed(17)
+cv.error.10=rep(0 ,10)
+for (i in 1:10) {
+  glm.fit = glm(mpg~poly(horsepower,i),data=Auto)
+  cv.error.10[i]=cv.glm(Auto,glm.fit,K=10)$delta[1]      # k=10
+}
+cv.error.10
+
+#Bootstrap
+alpha.fn=function (data ,index){                         # Function to estimate statistic of interest  
+X=data$X [index]
+Y=data$Y [index]
+return ((var(Y)-cov (X,Y))/(var(X)+var(Y) -2* cov(X,Y)))
+}
+alpha.fn(Portfolio,1:100)                                # Calling the function
+set.seed (1)
+alpha.fn(Portfolio, sample(100, 100, replace =T))        # Randomly selecting 100 obs with replacement
+boot(Portfolio,alpha.fn,R=1000)                          # Boot function pulls 1000 samples and corresp estimates
+
+boot.fn=function(data,index)
+return(coef(lm(mpg~horsepower,data=data,subset=index)))  
+boot.fn(Auto,1:392)
+boot(Auto,boot.fn,1000)                                  # Estimate std errors using bootstrapping
+summary(lm(mpg~horsepower,data=Auto))$coef               # Estimate normal std errors
+
+boot.fn=function(data,index)
+coefficients(lm(mpg~horsepower+I(horsepower^2),data=data,subset=index))     
+set.seed(1)
+boot(Auto,boot.fn,1000)                                                     # Estimate std errors using bootstrapping     
+summary(lm(mpg~horsepower+I(horsepower^2),data=Auto))$coef                  # Estimate normal std errors
+
